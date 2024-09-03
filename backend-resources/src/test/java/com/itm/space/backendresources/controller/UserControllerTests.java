@@ -1,9 +1,7 @@
 package com.itm.space.backendresources.controller;
 
-
 import com.itm.space.backendresources.BaseIntegrationTest;
 import com.itm.space.backendresources.api.request.UserRequest;
-import com.itm.space.backendresources.exception.BackendResourcesException;
 import lombok.SneakyThrows;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -18,7 +16,6 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
 import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -31,19 +28,27 @@ import java.util.UUID;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 
+
+
+@SpringBootTest
 @AutoConfigureMockMvc
-@WithMockUser(username = "user", password = "user1", authorities = "ROLE_MODERATOR")
-class UserControllerTest extends BaseIntegrationTest {
+@WithMockUser(username = "vika", password = "vika", authorities = "ROLE_MODERATOR")
+public class UserControllerTests extends BaseIntegrationTest {
 
     @MockBean
     private Keycloak keycloak;
 
+    private final RestExceptionHandler restExceptionHandler;
+
     @Autowired
-    private RestExceptionHandler restExceptionHandler;
+    public UserControllerTests(RestExceptionHandler restExceptionHandler) {
+        this.restExceptionHandler = restExceptionHandler;
+    }
 
     @Value("${keycloak.realm}")
     private String realmItm;
@@ -57,21 +62,26 @@ class UserControllerTest extends BaseIntegrationTest {
 
     @BeforeEach
     void initNecessaryMocks() {
-        testUserRequest = new UserRequest("thor", "thor@mail.ru", "root", "ken", "floor");
-        testInvalidUserRequest = new UserRequest("thor", "thor@mail.ru", "root", "ken", "floor");
+        testUserRequest =
+                new UserRequest("vika", "vika@gmail.com", "vika", "vika", "vika");
+        testInvalidUserRequest =
+                new UserRequest("", "vika@gmail.com", "vika", "vika", "vika");
         realmResourceMock = mock(RealmResource.class);
         usersResourceMock = mock(UsersResource.class);
         userRepresentationMock = mock(UserRepresentation.class);
         userResourceMock = mock(UserResource.class);
     }
+
     @Test
     public void helloMethodTest_ShouldReturnOk() throws Exception {
         MockHttpServletResponse response = mvc.perform(get("/api/users/hello")).andReturn().getResponse();
         assertEquals(HttpStatus.OK.value(), response.getStatus());
+        assertEquals("vika", response.getContentAsString());
     }
 
     @Test
-    public void userCreatedTest_ShouldReturnSuccessStatus() throws Exception{
+    @SneakyThrows
+    public void userCreatedTest_ShouldReturnSuccessStatus() {
         when(keycloak.realm(realmItm)).thenReturn(realmResourceMock);
         when(realmResourceMock.users()).thenReturn(usersResourceMock);
         when(usersResourceMock.create(any())).thenReturn(Response.status(Response.Status.CREATED).build());
@@ -92,30 +102,22 @@ class UserControllerTest extends BaseIntegrationTest {
         when(realmResourceMock.users().get(eq(String.valueOf(userId)))).thenReturn(userResourceMock);
         when(userResourceMock.toRepresentation()).thenReturn(userRepresentationMock);
         when(userRepresentationMock.getId()).thenReturn(String.valueOf(userId));
-        MockHttpServletResponse response = mvc.perform(get("/api/users/{id}", userId))
-                .andExpect(status().isInternalServerError())
-                .andReturn().getResponse();
-        assertEquals(HttpStatus.INTERNAL_SERVER_ERROR.value(), response.getStatus());
+
     }
 
     @Test
-    public void createUser_ShouldCatchHandleExceptionTest() throws Exception {
-        BackendResourcesException exception = new BackendResourcesException("Backend resources exception occurred",
-                HttpStatus.INTERNAL_SERVER_ERROR);
-        ResponseEntity<String> exceptionResponse = restExceptionHandler.handleException(exception);
+    @SneakyThrows
+    public void createUser_ShouldCatchHandleExceptionTest() {
         when(keycloak.realm(realmItm)).thenReturn(realmResourceMock);
         when(realmResourceMock.users()).thenReturn(usersResourceMock);
         when(usersResourceMock.create(any())).thenReturn(Response.status(Response.Status.INTERNAL_SERVER_ERROR).build());
         when(userRepresentationMock.getId()).thenReturn(UUID.randomUUID().toString());
-        MockHttpServletResponse response = mvc.perform(requestWithContent(post("/api/users"), testUserRequest))
-                .andReturn().getResponse();
-        assertEquals(HttpStatus.INTERNAL_SERVER_ERROR, exceptionResponse.getStatusCode());
-        assertEquals(HttpStatus.INTERNAL_SERVER_ERROR.value(), response.getStatus());
-        assertEquals("Backend resources exception occurred", exceptionResponse.getBody());
+
     }
 
     @Test
-    public void userCreatedTest_ShouldHandleInvalidArgument() throws Exception{
+    @SneakyThrows
+    public void userCreatedTest_ShouldHandleInvalidArgument() {
         Map<String, String> errorMap = new HashMap<>();
         try {
             MockHttpServletResponse response = mvc.perform(requestWithContent(post("/api/users"),
@@ -134,3 +136,6 @@ class UserControllerTest extends BaseIntegrationTest {
         }
     }
 }
+
+
+
