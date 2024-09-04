@@ -64,7 +64,7 @@ public class UserServiceImplTest {
         when(usersResource.create(any(UserRepresentation.class)))
                 .thenReturn(Response.status(201).build());
         MockitoAnnotations.openMocks(this);
-        testUserId = UUID.fromString("9f0d14d6-f333-463d-94b1-0fe7df03ccd5");
+        testUserId = UUID.fromString("e5dfb182-d1a9-494c-a0ff-3965213a3143");
     }
 
     @Test
